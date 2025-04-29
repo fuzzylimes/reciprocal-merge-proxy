@@ -23,7 +23,7 @@ jobs:
           cache: 'npm'
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci && cd src && npm ci && cd ..
 
       - name: Install CDK globally
         run: npm install -g aws-cdk
