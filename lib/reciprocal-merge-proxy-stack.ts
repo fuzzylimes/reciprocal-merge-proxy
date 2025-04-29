@@ -4,6 +4,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class ReciprocalMergeProxyStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -13,37 +14,30 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
     const allowedOrigin = process.env.ALLOWED_ORIGIN!;
 
     // Create Lambda function
-    const proxyFunction = new lambda.Function(this, 'ProxyFunction', {
+    const proxyFunction = new NodejsFunction(this, 'ProxyFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'dist/proxy.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), {
-        // Bundle the Lambda code using esbuild to handle TypeScript and ESM modules
-        bundling: {
-          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
-          command: [
-            'bash', '-c', [
-              'npm install',
-              'npm run build',
-              'cp -r dist/* /asset-output/',
-              'cp package.json /asset-output/',
-              'cd /asset-output',
-              'npm install --production'
-            ].join(' && ')
-          ],
-        },
-      }),
+      handler: 'handler',
+      entry: path.join(__dirname, '../src/lambda/proxy.ts'), // Point directly to your TS file
       memorySize: 128,
       timeout: cdk.Duration.seconds(10),
       logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         ALLOWED_ORIGIN: allowedOrigin,
         NODE_OPTIONS: '--enable-source-maps',
-      }
+      },
+      bundling: {
+        minify: true,           // Minify code for production
+        sourceMap: true,        // Include source maps for better debugging
+        externalModules: [      // Modules that should be excluded from bundling
+          'aws-sdk',            // AWS SDK is available in the Lambda environment
+        ],
+        forceDockerBundling: false, // Prefer local bundling with esbuild
+      },
     });
 
     // Create API Gateway
     const api = new apigateway.RestApi(this, 'ProxyApi', {
-      restApiName: ' Proxy API',
+      restApiName: 'Proxy API',
       description: 'API to proxy requests to 3rd party service',
       defaultCorsPreflightOptions: {
         allowOrigins: [allowedOrigin],

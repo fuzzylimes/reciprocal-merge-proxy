@@ -35,6 +35,6 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy CDK stack
-        run: cdk deploy --require-approval never
+        run: cdk deploy --require-approval never --no-docker
         env:
           ALLOWED_ORIGIN: ${{ secrets.ALLOWED_ORIGIN }}

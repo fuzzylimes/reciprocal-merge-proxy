@@ -17,7 +17,8 @@
     "alwaysStrict": true
   },
   "include": [
-    "*.ts"
+    "*.ts",
+    "lambda/proxy.ts"
   ],
   "exclude": [
     "node_modules",
