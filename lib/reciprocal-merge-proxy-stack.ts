@@ -10,8 +10,8 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // GitHub Pages domain - you'll need to update this
     const allowedOrigin = process.env.ALLOWED_ORIGIN!;
+    // const allowedOrigin = '*'; // Uncomment for local testing
 
     // Create Lambda function
     const proxyFunction = new NodejsFunction(this, 'ProxyFunction', {
