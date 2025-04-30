@@ -15,7 +15,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
 
     // Create Lambda function
     const proxyFunction = new NodejsFunction(this, 'ProxyFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler',
       entry: path.join(__dirname, '../src/lambda/proxy.ts'), // Point directly to your TS file
       memorySize: 128,
