@@ -85,6 +85,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
     // Grant S3 permissions
     responsesBucket.grantReadWrite(workerFunction);
     responsesBucket.grantRead(processRequestFunction);
+    responsesBucket.grantDelete(processRequestFunction);
 
     // Add DynamoDB stream trigger for worker function
     workerFunction.addEventSource(new DynamoEventSource(requestTable, {
