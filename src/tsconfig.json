@@ -18,7 +18,8 @@
   },
   "include": [
     "*.ts",
-    "lambda/proxy.ts"
+    "lambda/*.ts",
+    "models/*.ts"
   ],
   "exclude": [
     "node_modules",
