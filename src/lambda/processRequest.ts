@@ -3,28 +3,12 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { S3Client, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import * as crypto from 'crypto';
+import { ProxyRequest, RequestRecord, requestStatus } from '../models';
 
 // Initialize clients
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
-
-// Interface for the request payload
-interface ProxyRequest {
-  cookie: string;
-  dea: string;
-}
-
-// Interface for DynamoDB record
-interface RequestRecord {
-  requestId: string;
-  status: 'queued' | 'in-progress' | 'complete';
-  s3Key?: string; // S3 key where response data is stored
-  cookie: string;
-  dea: string;
-  createdAt: number;
-  ttl: number;
-}
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   // Get environment variables
@@ -92,7 +76,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const record = existingRecord.Item as RequestRecord;
 
       switch (record.status) {
-        case 'complete':
+        case requestStatus.complete:
           // Get the response data from S3
           if (!record.s3Key) {
             return {
@@ -140,23 +124,23 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
           }
 
-        case 'in-progress':
+        case requestStatus.inProgress:
           return {
-            statusCode: 202, // Accepted, processing
+            statusCode: 202,
             headers: corsHeaders,
             body: JSON.stringify({
-              status: 'in-progress',
+              status: requestStatus.inProgress,
               message: 'Request is being processed',
               requestId
             })
           };
 
-        case 'queued':
+        case requestStatus.queued:
           return {
-            statusCode: 202, // Accepted, queued
+            statusCode: 202,
             headers: corsHeaders,
             body: JSON.stringify({
-              status: 'queued',
+              status: requestStatus.queued,
               message: 'Request is queued for processing',
               requestId
             })
@@ -170,7 +154,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const newRecord: RequestRecord = {
       requestId,
-      status: 'queued',
+      status: requestStatus.queued,
       cookie,
       dea,
       createdAt: now,
@@ -183,10 +167,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }));
 
     return {
-      statusCode: 202, // Accepted, queued
+      statusCode: 202,
       headers: corsHeaders,
       body: JSON.stringify({
-        status: 'queued',
+        status: requestStatus.queued,
         message: 'Request has been queued for processing',
         requestId
       })

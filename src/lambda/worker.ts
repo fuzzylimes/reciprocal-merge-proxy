@@ -4,22 +4,12 @@ import { DynamoDBDocumentClient, UpdateCommand, DeleteCommand } from '@aws-sdk/l
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import fetch from 'node-fetch';
+import { RequestRecord, requestStatus } from '../models';
 
 // Initialize clients
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
-
-// Interface for DynamoDB record
-interface RequestRecord {
-  requestId: string;
-  status: 'queued' | 'in-progress' | 'complete';
-  cookie: string;
-  dea: string;
-  s3Key?: string; // S3 key where response data is stored
-  createdAt: number;
-  ttl: number;
-}
 
 export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
   const REQUEST_TABLE_NAME = process.env.REQUEST_TABLE_NAME!;
@@ -42,7 +32,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
       const requestRecord = unmarshall(record.dynamodb.NewImage as Record<string, any>) as RequestRecord;
 
       // Only process records that are queued
-      if (requestRecord.status !== 'queued') {
+      if (requestRecord.status !== requestStatus.queued) {
         console.log(`Record ${requestRecord.requestId} is not queued, skipping`);
         continue;
       }
@@ -58,12 +48,23 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
           '#status': 'status'
         },
         ExpressionAttributeValues: {
-          ':status': 'in-progress'
+          ':status': requestStatus.inProgress
         }
       }));
 
-      // Set up timeout to delete record after 60 seconds
+      // Shared flag to prevent race conditions between timeout and completion
+      let isCompleted = false;
+
+      // In order to account for the API being slow, we create a timer that will wait for 60 seconds. The
+      // function is set to run for 70 seconds. If for whatever reason we don't get a response in 60 seconds,
+      // we're going to abort and cleanup.
       const timeoutId = setTimeout(async () => {
+        // Check if already completed to avoid race condition
+        if (isCompleted) {
+          return;
+        }
+        isCompleted = true;
+
         try {
           console.log(`Timeout reached for request ${requestRecord.requestId}, deleting record`);
           await docClient.send(new DeleteCommand({
@@ -75,9 +76,16 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
         }
       }, 60000);
 
+      // Process the API request
       try {
-        // Process the API request
         const result = await processApiRequest(requestRecord.cookie, requestRecord.dea);
+
+        // Check if timeout already fired to avoid race condition
+        if (isCompleted) {
+          console.log(`Request ${requestRecord.requestId} completed after timeout, ignoring result`);
+          return;
+        }
+        isCompleted = true;
 
         // Clear the timeout since we got a response
         clearTimeout(timeoutId);
@@ -101,7 +109,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
             '#s3Key': 's3Key'
           },
           ExpressionAttributeValues: {
-            ':status': 'complete',
+            ':status': requestStatus.complete,
             ':s3Key': s3Key
           }
         }));
@@ -115,6 +123,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
         console.error(`Error processing request ${requestRecord.requestId}:`, error);
 
         // Delete the record so it can be retried
+        // If for whatever reason the Update command fails, the doc in s3 will automatically be cleaned up after an hour.
         await docClient.send(new DeleteCommand({
           TableName: REQUEST_TABLE_NAME,
           Key: { requestId: requestRecord.requestId }
@@ -123,7 +132,6 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
 
     } catch (error) {
       console.error('Error processing DynamoDB stream record:', error);
-      // Continue processing other records even if one fails
     }
   }
 };
@@ -150,12 +158,7 @@ async function processApiRequest(cookie: string, dea: string): Promise<string> {
     throw new Error(`Redirect response from API: ${response.status}, Location: ${response.headers.get('location')}`);
   }
 
-  // Check for other error status codes
-  if (!response.ok) {
-    throw new Error(`API request failed with status: ${response.status}`);
-  }
-
-  // Get response text
+  // Even if this is an error, we want to return the text. The caller can deal with it.
   const responseText = await response.text();
 
   return responseText;

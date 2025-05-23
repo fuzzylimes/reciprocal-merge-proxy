@@ -30,7 +30,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
     const requestTable = new dynamodb.Table(this, 'RequestQueue', {
       partitionKey: { name: 'requestId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       timeToLiveAttribute: 'ttl',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -90,7 +90,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
     workerFunction.addEventSource(new DynamoEventSource(requestTable, {
       startingPosition: lambda.StartingPosition.LATEST,
       batchSize: 1, // Process one record at a time
-      retryAttempts: 1,
+      retryAttempts: 0,
       maxBatchingWindow: cdk.Duration.seconds(0), // Process immediately
       reportBatchItemFailures: true,
     }));
