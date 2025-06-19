@@ -20,7 +20,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
       bucketName: undefined, // Let CDK generate a unique name
       lifecycleRules: [{
         id: 'DeleteOldResponses',
-        expiration: cdk.Duration.hours(1),
+        expiration: cdk.Duration.days(1),
         enabled: true
       }],
       removalPolicy: cdk.RemovalPolicy.DESTROY,
