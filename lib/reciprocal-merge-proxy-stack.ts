@@ -37,7 +37,7 @@ export class ReciprocalMergeProxyStack extends cdk.Stack {
 
     // Create the worker Lambda function (processes the actual API call)
     const workerFunction = new NodejsFunction(this, 'WorkerFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'handler',
       entry: path.join(__dirname, '../src/lambda/worker.ts'),
       memorySize: 256,
