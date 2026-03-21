@@ -11,15 +11,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.816.0",
-    "@aws-sdk/client-s3": "^3.816.0",
-    "@aws-sdk/lib-dynamodb": "^3.816.0",
-    "@aws-sdk/util-dynamodb": "^3.816.0",
+    "@aws-sdk/client-dynamodb": "^3.1014.0",
+    "@aws-sdk/client-s3": "^3.1014.0",
+    "@aws-sdk/lib-dynamodb": "^3.1014.0",
+    "@aws-sdk/util-dynamodb": "^3.996.2",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.149",
-    "@types/node": "^22.15.3",
-    "typescript": "^5.8.3"
+    "@types/aws-lambda": "^8.10.161",
+    "@types/node": "^22.19.15",
+    "typescript": "^5.9.3"
   }
 }
