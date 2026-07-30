@@ -1,17 +1,36 @@
-// import * as cdk from 'aws-cdk-lib';
-// import { Template } from 'aws-cdk-lib/assertions';
-// import * as ReciprocalMergeProxy from '../lib/reciprocal-merge-proxy-stack';
+import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { ReciprocalMergeProxyStack } from '../lib/reciprocal-merge-proxy-stack';
 
-// example test. To run these tests, uncomment this file along with the
-// example resource in lib/reciprocal-merge-proxy-stack.ts
-test('SQS Queue Created', () => {
-//   const app = new cdk.App();
-//     // WHEN
-//   const stack = new ReciprocalMergeProxy.ReciprocalMergeProxyStack(app, 'MyTestStack');
-//     // THEN
-//   const template = Template.fromStack(stack);
+describe('ReciprocalMergeProxyStack', () => {
+  let template: Template;
 
-//   template.hasResourceProperties('AWS::SQS::Queue', {
-//     VisibilityTimeout: 300
-//   });
+  beforeAll(() => {
+    process.env.ALLOWED_ORIGIN = 'https://example.com';
+    const app = new cdk.App();
+    const stack = new ReciprocalMergeProxyStack(app, 'TestStack');
+    template = Template.fromStack(stack);
+  });
+
+  test('synthesizes without throwing', () => {
+    expect(template).toBeDefined();
+  });
+
+  test('creates the request queue table and responses bucket', () => {
+    template.resourceCountIs('AWS::DynamoDB::Table', 1);
+    template.resourceCountIs('AWS::S3::Bucket', 1);
+  });
+
+  test('creates both lambda functions', () => {
+    // 3, not 2: CDK inserts its own LogRetention custom-resource function
+    // alongside WorkerFunction and ProcessRequestFunction (via the deprecated
+    // `logRetention` prop).
+    template.resourceCountIs('AWS::Lambda::Function', 3);
+  });
+
+  test('exposes a POST /proxy endpoint', () => {
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'POST',
+    });
+  });
 });
