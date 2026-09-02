@@ -1,3 +1,6 @@
+> [!WARNING]
+> This project has been sunset for the foreseeable future. Use it for reference if you'd like, but I will no longer be maintaining it.
+
 # Reciprocal Merge (Proxy)
 
 This is a companion project for the [Reciprocal Merge](https://github.com/fuzzylimes/reciprocal-merge) tool, used to proxy requests to the 3rd party service that handles DEA lookups.
